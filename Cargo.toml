@@ -1,0 +1,25 @@
+[package]
+name = "type-protocol"
+authors = ["Mincong Lu <mintlux667@gmail.com>"]
+license = "MIT OR Apache-2.0"
+
+readme = "README.md"
+repository = "https://github.com/mintlu8/type-protocol"
+description = """
+A crate provding a simple syntax representing types.
+"""
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+serde = ["dep:serde"]
+rkyv = ["dep:rkyv"]
+
+[dependencies]
+strum = { version = "0.25", features = ["derive"] }
+thiserror = "1"
+unicode-ident = "1"
+
+rkyv = { version = "0.7", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }

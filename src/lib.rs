@@ -1,9 +1,9 @@
-//! A crate provding a simple syntax inspired by the go programming language
-//! for conveying the idea of types.
+//! A crate providing a simple syntax inspired by the go programming language
+//! for conveying types.
 //!
 //! # Universal Types
 //!
-//! These are common datatype found in most languages.
+//! These are common datatypes found in most languages.
 //!
 //! * Boolean Types: `bool`
 //! * Signed Integer Types: `int` or `isize`, `int8`, `int16`, `int32`, `int64`, `int128`
@@ -15,17 +15,17 @@
 //!
 //! These are common special datatypes, prefixed with +.
 //!
-//! * `+bytes`
-//! * `+dateTime`, `+date`, `+time`, `+duration`
-//! * `+decimal`
-//! * `+uuid`
-//! * `+rgb`, `+rgba`
+//! * `bytes`
+//! * `date_time`, `date`, `time`, `duration`
+//! * `decimal`
+//! * `uuid`
+//! * `rgb`, `rgba`
 //!
 //! # Types and Paths
 //!
 //! Any string segment not starting with an reserved symbol is a **Type** or a **Path** if
 //! it is not a **Builtin Type**.
-//! Buildin types use **snake_case** so you should use **PascalCase** to avoid collision.
+//! Builtin types use **snake_case** so you should use **PascalCase** to avoid collision.
 //!
 //! * Named Types
 //!
@@ -36,7 +36,7 @@
 //! The [`RustIdent`] validator will fail `Hello World` and `2022`,
 //! while the [`AsciiIdent`] validator will fail `Foöbár` additionally.
 //!
-//! Note type-protocol grammer treat whitespaces like normal characters,
+//! Note type-protocol grammar treat whitespaces like normal characters,
 //! the user is responsible for stripping them if needed.
 //!
 //! * Paths
@@ -106,13 +106,13 @@ pub trait IdentValidation {
     fn validate(s: &str) -> bool;
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AlwaysValid;
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnicodeXID;
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RustIdent;
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AsciiIdent;
 
 impl IdentValidation for AlwaysValid {
@@ -171,7 +171,6 @@ impl IdentValidation for AsciiIdent {
 pub enum Never {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum UniversalType {
     Bool,
@@ -237,8 +236,6 @@ impl Display for UniversalType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum::IntoStaticStr, strum::EnumString)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "rkyv", derive(rkyv::Archive))]
 #[non_exhaustive]
 pub enum ExtensionType {
     #[strum(serialize="decimal")]
@@ -261,7 +258,6 @@ pub enum ExtensionType {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "rkyv", derive(rkyv::Archive))]
 #[non_exhaustive]
 pub enum Typing<Validation = AlwaysValid> {
     /// The `none` type.
@@ -290,7 +286,7 @@ pub enum Typing<Validation = AlwaysValid> {
     },
     /// An optional or nullable type.
     Option(Box<Self>),
-    /// A nameless product type deliminated with comma.
+    /// A nameless product type delimited with comma.
     ///
     /// i.e. `(int,string,char)`
     Tuple(Vec<Self>),
@@ -428,9 +424,9 @@ impl<V: IdentValidation> FromStr for Typing<V> {
                 let result = Self::Tuple(chars.as_str()
                     .split(|c| {
                         match c {
-                            '[' => if bracket >= 0 { bracket += 1 },
+                            '[' => bracket += 1,
                             ']' => bracket -= 1,
-                            '(' => if paren >= 0 { paren += 1 },
+                            '(' => paren += 1,
                             ')' => paren -= 1,
                             ',' if paren == 0 && bracket == 0 => return true,
                             _ => (),
@@ -452,15 +448,13 @@ impl<V: IdentValidation> FromStr for Typing<V> {
                 let mut bracket = 1;
                 let (key, value) = match chars.as_str().split_once(|c| {
                     match c {
-                        '[' => if bracket >= 0 { bracket += 1 },
+                        '[' => bracket += 1,
                         ']' => {
                             bracket -= 1;
                             if bracket == 0 {
                                 return true;
                             }
                         },
-                        '(' => if paren >= 0 { paren += 1 },
-                        ')' => paren -= 1,
                         _ => (),
                     }
                     return false;
@@ -480,16 +474,11 @@ impl<V: IdentValidation> FromStr for Typing<V> {
             },
             Some('?') => Self::Option(Self::from_str(chars.as_str())?.boxed()),
             Some('@') => Self::Foreign(Self::from_str(chars.as_str())?.boxed()),
-            Some('+') => {
-                if let Ok(t) = ExtensionType::from_str(chars.as_str()) {
-                    Self::Extension(t)
-                } else {
-                    return Err(Error::UnknownExtensionType);
-                }
-            },
             _ => {
                 if let Ok(t) = UniversalType::from_str(s) {
                     Self::Common(t)
+                } else if let Ok(t) = ExtensionType::from_str(s) {
+                    Self::Extension(t)
                 } else if s.contains("::") {
                     let absolute = s.starts_with("::");
                     let s = s.trim_start_matches("::");

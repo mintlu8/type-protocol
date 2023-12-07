@@ -5,6 +5,7 @@ use crate::{Typing, RustIdent, AsciiIdent, nz, UniversalType, ExtensionType, Err
 type AsciiTy = Typing<AsciiIdent>;
 type RustTy = Typing<RustIdent>;
 
+#[test]
 fn test_parsing() {
     let s = "";
     assert!(RustTy::from_str(s) == Err(Error::Empty));
@@ -19,7 +20,7 @@ fn test_parsing() {
     let s = "uint32";
     assert!(RustTy::from_str(s) == Ok(RustTy::Common(UniversalType::UInt(nz!(4)))));
 
-    let s = "+decimal";
+    let s = "decimal";
     assert!(RustTy::from_str(s) == Ok(RustTy::Extension(ExtensionType::Decimal)));
 
     let s = "[]vec2";
@@ -33,8 +34,8 @@ fn test_parsing() {
         ).boxed()
     )));
 
-    let s = "[[[+datetime]]]";
-    assert!(RustTy::from_str(s) == Ok(RustTy::Set(
+    let s = "[[[datetime]]]";
+    assert_eq!(RustTy::from_str(s), Ok(RustTy::Set(
         RustTy::Set(
             RustTy::Set(
                 RustTy::Extension(ExtensionType::DateTime).boxed()
@@ -42,10 +43,13 @@ fn test_parsing() {
         ).boxed()
     )));
 
-    let s = "[42e]?(uint8,@smartstring)";
-    assert!(RustTy::from_str(s) ==
+    let s = "[(Hello,World)]?(uint8,@smartstring)";
+    assert_eq!(RustTy::from_str(s),
         Ok(RustTy::Map(
-            RustTy::Named("42e".to_owned()).boxed(),
+            RustTy::Tuple(vec![
+                RustTy::Named("Hello".to_owned()),
+                RustTy::Named("World".to_owned()),
+            ]).boxed(),
             RustTy::Option(
                 RustTy::Tuple(vec![
                     RustTy::Common(UniversalType::UInt(nz!(1))),
